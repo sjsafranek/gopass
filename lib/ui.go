@@ -8,6 +8,8 @@
 package lib
 
 import (
+	"fmt"
+
 	"github.com/mattn/go-gtk/glib"
 	"github.com/mattn/go-gtk/gtk"
 )
@@ -19,9 +21,13 @@ func Run(db Database) (string, error) {
 	window.SetResizable(false)
 	window.SetTitle("GoPass")
 	window.Connect("destroy", func(ctx *glib.CallbackContext) {
-		println("got destroy!", ctx.Data().(string))
+		fmt.Println("got destroy!", ctx.Data().(string))
 		gtk.MainQuit()
 	}, "foo")
+
+	statusbar := gtk.NewStatusbar()
+	statusbar_context_id := statusbar.GetContextId("go-gtk")
+	statusbar.Push(statusbar_context_id, "")
 
 	//--------------------------------------------------------
 	// GtkVBox
@@ -56,21 +62,18 @@ func Run(db Database) (string, error) {
 	key_label := gtk.NewLabel("Key            ")
 	key_row.Add(key_label)
 	key_entry := gtk.NewEntry()
-	// key_entry.SetText("key")
 	key_row.Add(key_entry)
 
 	pass_row := gtk.NewHBox(false, 1)
 	pass_label := gtk.NewLabel("Passphrase")
 	pass_row.Add(pass_label)
 	pass_entry := gtk.NewEntry()
-	// pass_entry.SetText("")
 	pass_row.Add(pass_entry)
 
 	val_row := gtk.NewHBox(false, 1)
 	val_label := gtk.NewLabel("Value         ")
 	val_row.Add(val_label)
 	val_entry := gtk.NewEntry()
-	// val_entry.SetText("")
 	val_row.Add(val_entry)
 
 	framebox1.Add(key_row)
@@ -85,11 +88,12 @@ func Run(db Database) (string, error) {
 	get_button := gtk.NewButtonWithLabel("GET")
 	get_button.Clicked(func() {
 		value, err := db.Get("store", key_entry.GetText(), pass_entry.GetText())
-		println(value, err)
 		if nil != err {
-			val_entry.SetText(err.Error())
+			val_entry.SetText("")
+			statusbar.Push(statusbar_context_id, err.Error())
 		} else {
 			val_entry.SetText(value)
+			statusbar.Push(statusbar_context_id, "Success")
 		}
 	})
 	buttons.Add(get_button)
@@ -108,7 +112,7 @@ func Run(db Database) (string, error) {
 	// statusbar := gtk.NewStatusbar()
 	// context_id := statusbar.GetContextId("go-gtk")
 	// statusbar.Push(context_id, "")
-	// framebox1.PackStart(statusbar, false, false, 0)
+	framebox1.PackStart(statusbar, false, false, 0)
 
 	//--------------------------------------------------------
 	// Event

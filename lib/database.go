@@ -11,11 +11,10 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
-	// "flag"
 	"fmt"
 	"io"
 	"os"
-	// "strings"
+	"unicode/utf8"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -144,6 +143,11 @@ func (self *Database) Get(table, key, passphrase string) (string, error) {
 			return errors.New("Not found")
 		}
 		result, err = Decrypt(passphrase, garbage)
+
+		if nil != err && !utf8.ValidString(result) {
+			err = errors.New("Not utf-8")
+		}
+
 		return err
 	})
 }
