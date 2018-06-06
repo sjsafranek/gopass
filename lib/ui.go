@@ -21,9 +21,9 @@ func Run(db Database) (string, error) {
 	window.SetResizable(false)
 	window.SetTitle("GoPass")
 	window.Connect("destroy", func(ctx *glib.CallbackContext) {
-		fmt.Println("got destroy!", ctx.Data().(string))
+		fmt.Println("Destroy!", ctx.Data().(string))
 		gtk.MainQuit()
-	}, "foo")
+	}, "goodbye")
 
 	statusbar := gtk.NewStatusbar()
 	statusbar_context_id := statusbar.GetContextId("go-gtk")
