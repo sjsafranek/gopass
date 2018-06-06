@@ -88,6 +88,7 @@ func Run(db Database) (string, error) {
 	get_button := gtk.NewButtonWithLabel("GET")
 	get_button.Clicked(func() {
 		value, err := db.Get("store", key_entry.GetText(), pass_entry.GetText())
+		fmt.Println(value, err)
 		if nil != err {
 			val_entry.SetText("")
 			statusbar.Push(statusbar_context_id, err.Error())

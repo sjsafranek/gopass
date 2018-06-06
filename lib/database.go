@@ -144,7 +144,7 @@ func (self *Database) Get(table, key, passphrase string) (string, error) {
 		}
 		result, err = Decrypt(passphrase, garbage)
 
-		if nil != err && !utf8.ValidString(result) {
+		if nil == err && !utf8.ValidString(result) {
 			err = errors.New("Not utf-8")
 		}
 
