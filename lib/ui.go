@@ -15,6 +15,8 @@ import (
 )
 
 func Run(db Database) (string, error) {
+	fmt.Println(db.Keys("store"))
+
 	gtk.Init(nil)
 	window := gtk.NewWindow(gtk.WINDOW_TOPLEVEL)
 	window.SetPosition(gtk.WIN_POS_CENTER)

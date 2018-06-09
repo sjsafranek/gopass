@@ -169,9 +169,28 @@ func (self *Database) Set(table, key, value, passphrase string) error {
 		}
 
 		compressed := self.compressByte([]byte(garbage))
-		return b.Put(self.hashKey(key), compressed)
+		// return b.Put(self.hashKey(key), compressed)
+		return b.Put([]byte(key), compressed)
 	})
 }
+
+func (self *Database) Keys(table string) ([]string, error) {
+	var result []string
+	if nil == self.db {
+		return result, errors.New("Database not opened")
+	}
+	return result, self.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(table))
+		if nil == b {
+			return errors.New("Bucket does not exist")
+		}
+		return b.ForEach(func(k, v []byte) error {
+			result = append(result, string(k))
+			return nil
+		})
+	})
+}
+
 
 // compressByte compresses byte
 func (self *Database) compressByte(src []byte) []byte {
@@ -208,6 +227,8 @@ func OpenDb(db_file string) Database {
 	db := Database{db: bolt_db}
 	err = db.CreateTable("store")
 	checkError(err)
+	// err = db.CreateTable("keys")
+	// checkError(err)
 	return db
 }
 
@@ -223,48 +244,5 @@ func Decrypt(passphrase, garbage string) (string, error) {
 	return decrypt(hashPassphase(passphrase), garbage)
 }
 
-//
-//
-// func main() {
-// 	// get command line args
-// 	flag.StringVar(&DB_FILE, "db", DEFAULT_DB_FILE, "database file")
-// 	flag.Parse()
-// 	args := flag.Args()
-//
-// 	result, err := (func() (string, error) {
-//
-// 		switch strings.ToLower(args[0]) {
-//
-// 		case "get":
-// 			db := OpenDb(DB_FILE)
-// 			defer db.Close()
-// 			return db.Get("store", args[1], args[2])
-//
-// 		case "set":
-// 			db := OpenDb(DB_FILE)
-// 			defer db.Close()
-// 			return "success", db.Set("store", args[1], args[2], args[3])
-//
-// 		case "encrypt":
-// 			return Encrypt(args[2], args[1])
-//
-// 		case "decrypt":
-// 			return 	Decrypt(args[2], args[1])
-//
-// 		default:
-// 			return "", errors.New("Unknown command")
-// 		}
-//
-// 	})()
-//
-// 	if nil != err {
-// 		fmt.Println(err)
-// 		os.Exit(1)
-// 	}
-//
-// 	fmt.Println(result)
-//
-// }
-//
 // // go get github.com/boltdb/bolt/...
 // // go get github.com/coreos/bbolt/...
