@@ -1,21 +1,11 @@
 package lib
 
 import (
-	"bytes"
-	"compress/flate"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/md5"
-	"crypto/rand"
-	"crypto/sha512"
-	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 	"os"
-	"unicode/utf8"
 	"time"
+	"unicode/utf8"
 
 	"github.com/boltdb/bolt"
 )
@@ -23,71 +13,6 @@ import (
 const DEFAULT_DB_FILE = "bolt.db"
 
 var DB_FILE string = DEFAULT_DB_FILE
-
-func GetMD5Hash(text string) string {
-	hasher := md5.New()
-	hasher.Write([]byte(text))
-	return hex.EncodeToString(hasher.Sum(nil))
-}
-
-func GetSha512Hash(text string) string {
-	hasher := sha512.New()
-	hasher.Write([]byte(text))
-	return hex.EncodeToString(hasher.Sum(nil))
-}
-
-func encrypt(key []byte, message string) (encmess string, err error) {
-	plainText := []byte(message)
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return
-	}
-
-	//IV needs to be unique, but doesn't have to be secure.
-	//It's common to put it at the beginning of the ciphertext.
-	cipherText := make([]byte, aes.BlockSize+len(plainText))
-	iv := cipherText[:aes.BlockSize]
-	if _, err = io.ReadFull(rand.Reader, iv); err != nil {
-		return
-	}
-
-	stream := cipher.NewCFBEncrypter(block, iv)
-	stream.XORKeyStream(cipherText[aes.BlockSize:], plainText)
-
-	//returns to base64 encoded string
-	encmess = base64.URLEncoding.EncodeToString(cipherText)
-	return
-}
-
-func decrypt(key []byte, securemess string) (decodedmess string, err error) {
-	cipherText, err := base64.URLEncoding.DecodeString(securemess)
-	if err != nil {
-		return
-	}
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return
-	}
-
-	if len(cipherText) < aes.BlockSize {
-		err = errors.New("Ciphertext block size is too short!")
-		return
-	}
-
-	//IV needs to be unique, but doesn't have to be secure.
-	//It's common to put it at the beginning of the ciphertext.
-	iv := cipherText[:aes.BlockSize]
-	cipherText = cipherText[aes.BlockSize:]
-
-	stream := cipher.NewCFBDecrypter(block, iv)
-	// XORKeyStream can work in-place if the two arguments are the same.
-	stream.XORKeyStream(cipherText, cipherText)
-
-	decodedmess = string(cipherText)
-	return
-}
 
 func checkError(err error) {
 	if err != nil {
@@ -120,10 +45,6 @@ func (self *Database) CreateTable(table_name string) error {
 	})
 }
 
-func (self *Database) hashKey(key string) []byte {
-	return []byte(GetSha512Hash(key))
-}
-
 func (self *Database) Get(table, key, passphrase string) (string, error) {
 	if nil == self.db {
 		return "", errors.New("Database not opened")
@@ -136,8 +57,9 @@ func (self *Database) Get(table, key, passphrase string) (string, error) {
 			return errors.New("Bucket does not exist")
 		}
 
-		v := b.Get(self.hashKey(key))
-		decompressed := self.decompressByte(v)
+		v := b.Get(Sha512HashByte(key))
+		// v := b.Get(ToByte(key))
+		decompressed := DecompressByte(v)
 		garbage := string(decompressed)
 		if "" == garbage {
 			return errors.New("Not found")
@@ -168,9 +90,9 @@ func (self *Database) Set(table, key, value, passphrase string) error {
 			return errors.New("Bucket does not exist")
 		}
 
-		compressed := self.compressByte([]byte(garbage))
-		// return b.Put(self.hashKey(key), compressed)
-		return b.Put([]byte(key), compressed)
+		compressed := CompressByte([]byte(garbage))
+		return b.Put(Sha512HashByte(key), compressed)
+		// return b.Put(ToByte(key), compressed)
 	})
 }
 
@@ -191,58 +113,11 @@ func (self *Database) Keys(table string) ([]string, error) {
 	})
 }
 
-
-// compressByte compresses byte
-func (self *Database) compressByte(src []byte) []byte {
-	compressedData := new(bytes.Buffer)
-	self.compress(src, compressedData, 9)
-	return compressedData.Bytes()
-}
-
-// decompressByte compresses byte
-func (self *Database) decompressByte(src []byte) []byte {
-	compressedData := bytes.NewBuffer(src)
-	deCompressedData := new(bytes.Buffer)
-	self.decompress(compressedData, deCompressedData)
-	return deCompressedData.Bytes()
-}
-
-// compress
-func (self *Database) compress(src []byte, dest io.Writer, level int) {
-	compressor, _ := flate.NewWriter(dest, level)
-	compressor.Write(src)
-	compressor.Close()
-}
-
-// decompress
-func (self *Database) decompress(src io.Reader, dest io.Writer) {
-	decompressor := flate.NewReader(src)
-	io.Copy(dest, decompressor)
-	decompressor.Close()
-}
-
 func OpenDb(db_file string) Database {
 	bolt_db, err := bolt.Open(DB_FILE, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	checkError(err)
 	db := Database{db: bolt_db}
 	err = db.CreateTable("store")
 	checkError(err)
-	// err = db.CreateTable("keys")
-	// checkError(err)
 	return db
 }
-
-func hashPassphase(passphrase string) []byte {
-	return []byte(GetMD5Hash(passphrase))
-}
-
-func Encrypt(passphrase, message string) (string, error) {
-	return encrypt(hashPassphase(passphrase), message)
-}
-
-func Decrypt(passphrase, garbage string) (string, error) {
-	return decrypt(hashPassphase(passphrase), garbage)
-}
-
-// // go get github.com/boltdb/bolt/...
-// // go get github.com/coreos/bbolt/...
