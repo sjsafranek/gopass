@@ -15,8 +15,6 @@ import (
 )
 
 func Run(db Database) (string, error) {
-	fmt.Println(db.Keys("store"))
-
 	gtk.Init(nil)
 	window := gtk.NewWindow(gtk.WINDOW_TOPLEVEL)
 	window.SetPosition(gtk.WIN_POS_CENTER)
@@ -60,11 +58,6 @@ func Run(db Database) (string, error) {
 	//--------------------------------------------------------
 	// GtkEntry
 	//--------------------------------------------------------
-	key_row := gtk.NewHBox(false, 1)
-	key_label := gtk.NewLabel("Key            ")
-	key_row.Add(key_label)
-	key_entry := gtk.NewEntry()
-	key_row.Add(key_entry)
 
 	pass_row := gtk.NewHBox(false, 1)
 	pass_label := gtk.NewLabel("Passphrase")
@@ -78,6 +71,33 @@ func Run(db Database) (string, error) {
 	val_entry := gtk.NewEntry()
 	val_row.Add(val_entry)
 
+	//
+	key_row := gtk.NewHBox(false, 1)
+	key_label := gtk.NewLabel("Key            ")
+	// key_label := gtk.NewLabel("Key")
+	key_row.Add(key_label)
+	// key_entry := gtk.NewEntry()
+	// key_row.Add(key_entry)
+	// DROP DOWN
+	comboboxentry := gtk.NewComboBoxEntryNewText()
+	keys, _ := db.Keys("store")
+	for i := range keys {
+		comboboxentry.AppendText(keys[i])
+	}
+	comboboxentry.Connect("changed", func() {
+		val_entry.SetText("")
+	})
+
+	// remove keys
+	// n_keys := len(keys)
+	// for i := 0; i < n_keys+1; i++ {
+	// 	fmt.Println(i)
+	// 	comboboxentry.RemoveText(i)
+	// }
+
+	key_row.PackStart(comboboxentry, false, false, 0)
+	//.end
+
 	framebox1.Add(key_row)
 	framebox1.Add(pass_row)
 	framebox1.Add(val_row)
@@ -89,7 +109,9 @@ func Run(db Database) (string, error) {
 
 	get_button := gtk.NewButtonWithLabel("GET")
 	get_button.Clicked(func() {
-		value, err := db.Get("store", key_entry.GetText(), pass_entry.GetText())
+		key := comboboxentry.GetActiveText()
+		value, err := db.Get("store", key, pass_entry.GetText())
+		// value, err := db.Get("store", key_entry.GetText(), pass_entry.GetText())
 		if nil != err {
 			val_entry.SetText("")
 			statusbar.Push(statusbar_context_id, err.Error())
@@ -102,7 +124,9 @@ func Run(db Database) (string, error) {
 
 	set_button := gtk.NewButtonWithLabel("SET")
 	set_button.Clicked(func() {
-		db.Set("store", key_entry.GetText(), val_entry.GetText(), pass_entry.GetText())
+		// db.Set("store", key_entry.GetText(), val_entry.GetText(), pass_entry.GetText())
+		key := comboboxentry.GetActiveText()
+		db.Set("store", key, val_entry.GetText(), pass_entry.GetText())
 	})
 	buttons.Add(set_button)
 

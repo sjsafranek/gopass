@@ -57,8 +57,8 @@ func (self *Database) Get(table, key, passphrase string) (string, error) {
 			return errors.New("Bucket does not exist")
 		}
 
-		v := b.Get(Sha512HashByte(key))
-		// v := b.Get(ToByte(key))
+		// v := b.Get(Sha512HashByte(key))
+		v := b.Get(ToByte(key))
 		decompressed := DecompressByte(v)
 		garbage := string(decompressed)
 		if "" == garbage {
@@ -91,8 +91,8 @@ func (self *Database) Set(table, key, value, passphrase string) error {
 		}
 
 		compressed := CompressByte([]byte(garbage))
-		return b.Put(Sha512HashByte(key), compressed)
-		// return b.Put(ToByte(key), compressed)
+		// return b.Put(Sha512HashByte(key), compressed)
+		return b.Put(ToByte(key), compressed)
 	})
 }
 
