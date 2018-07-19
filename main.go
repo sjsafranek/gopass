@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/sjsafranek/gopass/lib"
+	"github.com/sjsafranek/goutils/cryptic"
 )
 
 const DEFAULT_DB_FILE = "bolt.db"
@@ -35,10 +36,10 @@ func main() {
 			return "success", db.Set("store", args[1], args[2], args[3])
 
 		case "encrypt":
-			return lib.Encrypt(args[2], args[1])
+			return cryptic.Encrypt(args[2], args[1])
 
 		case "decrypt":
-			return lib.Decrypt(args[2], args[1])
+			return cryptic.Decrypt(args[2], args[1])
 
 		case "ui":
 			db := lib.OpenDb(DB_FILE)

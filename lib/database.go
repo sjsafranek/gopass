@@ -8,6 +8,10 @@ import (
 	"unicode/utf8"
 
 	"github.com/boltdb/bolt"
+
+	"github.com/sjsafranek/goutils/cryptic"
+	"github.com/sjsafranek/goutils/minify"
+	"github.com/sjsafranek/goutils/transformers"
 )
 
 const DEFAULT_DB_FILE = "bolt.db"
@@ -58,13 +62,13 @@ func (self *Database) Get(table, key, passphrase string) (string, error) {
 		}
 
 		// v := b.Get(Sha512HashByte(key))
-		v := b.Get(ToByte(key))
-		decompressed := DecompressByte(v)
+		v := b.Get(transformers.ToByte(key))
+		decompressed := minify.DecompressByte(v)
 		garbage := string(decompressed)
 		if "" == garbage {
 			return errors.New("Not found")
 		}
-		result, err = Decrypt(passphrase, garbage)
+		result, err = cryptic.Decrypt(passphrase, garbage)
 
 		if nil == err && !utf8.ValidString(result) {
 			err = errors.New("Not utf-8")
@@ -80,7 +84,7 @@ func (self *Database) Set(table, key, value, passphrase string) error {
 	}
 
 	return self.db.Update(func(tx *bolt.Tx) error {
-		garbage, err := Encrypt(passphrase, value)
+		garbage, err := cryptic.Encrypt(passphrase, value)
 		if nil != err {
 			return err
 		}
@@ -90,9 +94,9 @@ func (self *Database) Set(table, key, value, passphrase string) error {
 			return errors.New("Bucket does not exist")
 		}
 
-		compressed := CompressByte([]byte(garbage))
+		compressed := minify.CompressByte([]byte(garbage))
 		// return b.Put(Sha512HashByte(key), compressed)
-		return b.Put(ToByte(key), compressed)
+		return b.Put(transformers.ToByte(key), compressed)
 	})
 }
 
