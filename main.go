@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"./lib"
+	"github.com/sjsafranek/gopass/lib"
 )
 
 const DEFAULT_DB_FILE = "bolt.db"
