@@ -117,6 +117,21 @@ func (self *Database) Keys(table string) ([]string, error) {
 	})
 }
 
+func (self *Database) Remove(table string, key string, passphrase string) error {
+	return self.db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(table))
+		if bucket == nil {
+			return fmt.Errorf("Bucket %q not found!", table)
+		}
+
+		err := bucket.Delete([]byte(key))
+		if err != nil {
+			return fmt.Errorf("Could not delete key: %s", err)
+		}
+		return err
+	})
+}
+
 func OpenDb(db_file string) Database {
 	bolt_db, err := bolt.Open(DB_FILE, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	checkError(err)
