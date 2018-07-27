@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -33,6 +34,11 @@ func (self *Database) Open(db_file string) error {
 	if nil != self.db {
 		self.Close()
 	}
+
+	if !strings.HasSuffix(db_file, ".db") {
+		db_file += ".db"
+	}
+
 	db, err := bolt.Open(db_file, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	self.db = db
 	return err
@@ -146,10 +152,9 @@ func (self *Database) Tables() ([]string, error) {
 }
 
 func OpenDb(db_file string) Database {
-	bolt_db, err := bolt.Open(db_file, 0600, &bolt.Options{Timeout: 1 * time.Second})
-	checkError(err)
-	db := Database{db: bolt_db}
-	err = db.CreateTable("store")
+	db := Database{}
+	db.Open(db_file)
+	err := db.CreateTable("store")
 	checkError(err)
 	return db
 }
