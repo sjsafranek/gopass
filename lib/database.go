@@ -132,8 +132,21 @@ func (self *Database) Remove(table string, key string, passphrase string) error 
 	})
 }
 
+func (self *Database) Tables() ([]string, error) {
+	var result []string
+	if nil == self.db {
+		return result, errors.New("Database not opened")
+	}
+	return result, self.db.View(func(tx *bolt.Tx) error {
+		return tx.ForEach(func(name []byte, b *bolt.Bucket) error {
+			result = append(result, string(name))
+			return nil
+		})
+	})
+}
+
 func OpenDb(db_file string) Database {
-	bolt_db, err := bolt.Open(DB_FILE, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	bolt_db, err := bolt.Open(db_file, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	checkError(err)
 	db := Database{db: bolt_db}
 	err = db.CreateTable("store")
