@@ -13,6 +13,8 @@ import (
 	"github.com/sjsafranek/goutils/cryptic"
 	"github.com/sjsafranek/goutils/minify"
 	"github.com/sjsafranek/goutils/transformers"
+
+	"github.com/schollz/golock"
 )
 
 const DEFAULT_DB_FILE = "bolt.db"
@@ -27,7 +29,8 @@ func checkError(err error) {
 }
 
 type Database struct {
-	db *bolt.DB
+	db    *bolt.DB
+	glock *golock.Lock
 }
 
 func (self *Database) Open(db_file string) error {
@@ -39,6 +42,23 @@ func (self *Database) Open(db_file string) error {
 		db_file += ".db"
 	}
 
+	// first initiate lockfile
+	lock_file := strings.Replace(db_file, ".db", ".lock", -1)
+	self.glock = golock.New(
+		golock.OptionSetName(lock_file),
+		golock.OptionSetInterval(1*time.Millisecond),
+		golock.OptionSetTimeout(60*time.Second),
+	)
+
+	// lock it
+	err := self.glock.Lock()
+	if err != nil {
+		// error means we didn't get the lock
+		// handle it
+		panic(err)
+	}
+	//.end
+
 	db, err := bolt.Open(db_file, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	self.db = db
 	return err
@@ -46,6 +66,12 @@ func (self *Database) Open(db_file string) error {
 
 func (self *Database) Close() {
 	self.db.Close()
+
+	// unlock it
+	err := self.glock.Unlock()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (self *Database) CreateTable(table_name string) error {
