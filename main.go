@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -11,28 +10,35 @@ import (
 	"github.com/sjsafranek/goutils/cryptic"
 )
 
-const DEFAULT_DB_FILE = "bolt.db"
+const (
+	DEFAULT_DB_ENGINE = "bolt"
+)
 
-var DB_FILE string = DEFAULT_DB_FILE
+var (
+	DB_ENGINE string = DEFAULT_DB_ENGINE
+)
 
 func main() {
 	// get command line args
-	flag.StringVar(&DB_FILE, "db", DEFAULT_DB_FILE, "database file")
+	flag.StringVar(&DB_ENGINE, "e", DEFAULT_DB_ENGINE, "database engine (bolt, sqlite3)")
 	flag.Parse()
 	args := flag.Args()
 
 	result, err := (func() (string, error) {
 
+		fmt.Println(DB_ENGINE)
+		db, err := lib.OpenDb(fmt.Sprintf("cryptic.%v", DB_ENGINE),DB_ENGINE)
+		if nil != err {
+			return "", err
+		}
+		defer db.Close()
+
 		switch strings.ToLower(args[0]) {
 
 		case "get":
-			db := lib.OpenDb(DB_FILE)
-			defer db.Close()
 			return db.Get("store", args[1], args[2])
 
 		case "set":
-			db := lib.OpenDb(DB_FILE)
-			defer db.Close()
 			return "success", db.Set("store", args[1], args[2], args[3])
 
 		case "encrypt":
@@ -42,12 +48,10 @@ func main() {
 			return cryptic.Decrypt(args[2], args[1])
 
 		case "ui":
-			db := lib.OpenDb(DB_FILE)
-			defer db.Close()
 			return lib.Run(db)
 
 		default:
-			return "", errors.New("Unknown command")
+			return "", lib.RunRepl(db)
 		}
 
 	})()
@@ -58,7 +62,6 @@ func main() {
 	}
 
 	fmt.Println(result)
-
 }
 
 // go get github.com/boltdb/bolt/...
