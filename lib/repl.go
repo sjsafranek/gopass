@@ -1,29 +1,14 @@
 package lib
 
-
 import (
-	// "flag"
 	"fmt"
 	"io"
 	"log"
+	"errors"
 	"strings"
 
 	"github.com/chzyer/readline"
 )
-
-// const (
-// 	DEFAULT_DATABASE_SERVER_ADDRESS = "localhost:9622"
-// )
-//
-// var (
-// 	DATABASE_SERVER_ADDRESS = DEFAULT_DATABASE_SERVER_ADDRESS
-// )
-
-// func init() {
-// 	// get command line args
-// 	flag.StringVar(&DATABASE_SERVER_ADDRESS, "a", DEFAULT_DATABASE_SERVER_ADDRESS, "database server address")
-// 	flag.Parse()
-// }
 
 func usage(w io.Writer) {
 	io.WriteString(w, "commands:\n")
@@ -43,9 +28,6 @@ var completer = readline.NewPrefixCompleter(
 	readline.PcItem("SETPASSPHRASE"),
 	readline.PcItem("GETNAMESPACE"),
 	readline.PcItem("GETPASSPHRASE"),
-	readline.PcItem("SETCLIENTENCRYPTION"),
-	readline.PcItem("CONNECT"),
-	readline.PcItem("DISCONNECT"),
 )
 
 func filterInput(r rune) (rune, bool) {
@@ -57,7 +39,7 @@ func filterInput(r rune) (rune, bool) {
 	return r, true
 }
 
-func RunRepl(db Database) error {
+func Repl(db Database) error {
 
 	l, err := readline.NewEx(&readline.Config{
 		Prompt:              "\033[31m[skeleton]#\033[0m ",
@@ -74,7 +56,7 @@ func RunRepl(db Database) error {
 	defer l.Close()
 
 	var passphrase string
-    var table_name string = "store"
+	var namespace string = "store"
 
 	log.SetOutput(l.Stderr())
 	for {
@@ -102,25 +84,17 @@ func RunRepl(db Database) error {
 		})
 		//.end
 
-		switch {
+		response := NewResponse()
 
-		// case strings.HasPrefix(command, "connect"):
-		// 	address := parts[1]
-		// 	err := db.Open(address)
-		// 	if nil != err {
-		// 		log.Println(err)
-		// 	}
-        //
-		// case strings.HasPrefix(command, "disconnect"):
-		// 	db.Close()
+		switch {
 
 		case strings.HasPrefix(command, "setnamespace"):
 			if 2 == len(parts) {
-				table_name = parts[1]
+				namespace = parts[1]
 				continue
+			} else {
+				response.SetError(errors.New("Incorrect usage"))
 			}
-			log.Println("Error! Incorrect usage")
-			log.Println("SETNAMESPACE <namespace>")
 
 		case strings.HasPrefix(command, "setpassphrase"):
 			pswd, err := l.ReadPasswordWithConfig(setPasswordCfg)
@@ -129,26 +103,24 @@ func RunRepl(db Database) error {
 			}
 
 		case strings.HasPrefix(command, "getnamespace"):
-			log.Println(table_name)
+			response.Data.Namespace = namespace
 
 		case strings.HasPrefix(command, "getpassphrase"):
-			log.Println(passphrase)
+			response.Data.Passphrase = passphrase
 
-		// case strings.HasPrefix(command, "del"):
-		// 	var key string
-        //
-		// 	if 2 == len(parts) {
-		// 		key = parts[1]
-		// 		result, err := client.Del(key, passphrase)
-		// 		if nil != err {
-		// 			log.Println(err)
-		// 			continue
-		// 		}
-		// 		fmt.Println(result)
-		// 		continue
-		// 	}
-		// 	log.Println("Error! Incorrect usage")
-		// 	log.Println("DEL <key>")
+		case strings.HasPrefix(command, "del"):
+			var key string
+
+			if 2 == len(parts) {
+				key = parts[1]
+				err := db.Del(namespace, key, passphrase)
+				if nil != err {
+					response.SetError(err)
+				}
+				continue
+			}
+			log.Println("Error! Incorrect usage")
+			log.Println("DEL <key>")
 
 		case strings.HasPrefix(command, "get"):
 			var key string
@@ -156,17 +128,17 @@ func RunRepl(db Database) error {
 			if 2 == len(parts) {
 				if "get" == command {
 					key = parts[1]
-					value, err := db.Get(table_name, key, passphrase)
+					value, err := db.Get(namespace, key, passphrase)
 					if nil != err {
-						log.Println(err)
-						continue
+						response.SetError(err)
 					}
-					fmt.Println(value)
-					continue
+					response.Data.Key = key
+					response.Data.Value = value
+					break
 				}
 			}
-			log.Println("Error! Incorrect usage")
-			log.Println("GET <key>")
+
+			response.SetError(errors.New("Incorrect usage"))
 
 		case strings.HasPrefix(command, "set"):
 			var key string
@@ -179,42 +151,32 @@ func RunRepl(db Database) error {
 				i2 := strings.LastIndex(line, "'")
 				value = line[i1+1 : i2]
 
-				err := db.Set(table_name, key, value, passphrase)
+				err := db.Set(namespace, key, value, passphrase)
 				if nil != err {
-					log.Println(err)
-					continue
+					response.SetError(err)
 				}
-				fmt.Println("ok")
-				continue
+
+				break
 			}
 
-			log.Println("Error! Incorrect usage")
-			log.Println("SET <key> <value>")
+			response.SetError(errors.New("Incorrect usage"))
 
 		case command == "help":
 			usage(l.Stderr())
 
 		case strings.HasPrefix(command, "keys"):
-			results, err := db.Keys(table_name)
+			results, err := db.Keys(namespace)
 			if nil != err {
-				log.Println(err)
-				continue
+				response.SetError(err)
 			}
-
-			for i := 0; i < len(results); i++ {
-				fmt.Printf("%v) %v\n", i, results[i])
-			}
+			response.Data.Keys = &results
 
 		case strings.HasPrefix(command, "namespaces"):
 			results, err := db.Tables()
 			if nil != err {
-				log.Println(err)
-				continue
+				response.SetError(err)
 			}
-
-			for i := 0; i < len(results); i++ {
-				fmt.Printf("%v) %v\n", i+1, results[i])
-			}
+			response.Data.Namespaces = &results
 
 		case command == "bye":
 			goto exit
@@ -226,11 +188,15 @@ func RunRepl(db Database) error {
 			goto exit
 
 		case line == "":
+			continue
+
 		default:
 			// log.Println("you said:", strconv.Quote(line))
 		}
+
+		response.Print()
 	}
 exit:
 
-return nil
+	return nil
 }

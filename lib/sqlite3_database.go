@@ -27,7 +27,7 @@ func (self *Sqlite3Database) CreateTable(table_name string) error {
 	return self.execWriteQuery(fmt.Sprintf(`
 		CREATE TABLE IF NOT EXISTS %v(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			key TEXT NOT NULL,
+			key TEXT NOT NULL UNIQUE,
 			value TEXT NOT NULL,
 			create_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			update_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -90,7 +90,7 @@ func (self *Sqlite3Database) Set(table_name, key, value, passphrase string) erro
 	return self.execWriteQuery(fmt.Sprintf(`INSERT INTO %v(key, value) VALUES(?, ?);`, table_name), key, garbage)
 }
 
-func (self *Sqlite3Database) Remove(table, key, passphrase string) error {
+func (self *Sqlite3Database) Del(table, key, passphrase string) error {
 	return nil
 }
 
@@ -112,7 +112,7 @@ func (self *Sqlite3Database) Tables() ([]string, error) {
 	// 	p.cid;
 	// `
 
-	rows, err := self.db.Query( `SELECT table_name FROM sqlite_master;`)
+	rows, err := self.db.Query(`SELECT table_name FROM sqlite_master;`)
 	if err != nil {
 		return results, err
 	}

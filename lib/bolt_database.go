@@ -134,7 +134,7 @@ func (self *BoltDatabase) Keys(table string) ([]string, error) {
 	})
 }
 
-func (self *BoltDatabase) Remove(table, key, passphrase string) error {
+func (self *BoltDatabase) Del(table, key, passphrase string) error {
 	return self.db.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(table))
 		if bucket == nil {

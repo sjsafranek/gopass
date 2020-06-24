@@ -6,7 +6,7 @@ import (
 
 type Database interface {
 	Tables() ([]string, error)
-	Remove(string, string, string) error
+	Del(string, string, string) error
 	Keys(string) ([]string, error)
 	Set(string, string, string, string) error
 	Get(string, string, string) (string, error)
