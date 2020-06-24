@@ -1,10 +1,10 @@
 package lib
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
-	"errors"
 	"strings"
 
 	"github.com/chzyer/readline"
@@ -40,6 +40,8 @@ func filterInput(r rune) (rune, bool) {
 }
 
 func Repl(db Database) error {
+
+	api := NewApi(db)
 
 	l, err := readline.NewEx(&readline.Config{
 		Prompt:              "\033[31m[skeleton]#\033[0m ",
@@ -103,80 +105,114 @@ func Repl(db Database) error {
 			}
 
 		case strings.HasPrefix(command, "getnamespace"):
-			response.Data.Namespace = namespace
+			response.Data = &ResponseData{Namespace: namespace}
 
 		case strings.HasPrefix(command, "getpassphrase"):
-			response.Data.Passphrase = passphrase
+			response.Data= &ResponseData{Passphrase: passphrase}
 
-		case strings.HasPrefix(command, "del"):
-			var key string
+		case "del" == command:
 
-			if 2 == len(parts) {
-				key = parts[1]
-				err := db.Del(namespace, key, passphrase)
-				if nil != err {
-					response.SetError(err)
-				}
-				continue
-			}
-			log.Println("Error! Incorrect usage")
-			log.Println("DEL <key>")
-
-		case strings.HasPrefix(command, "get"):
-			var key string
-
-			if 2 == len(parts) {
-				if "get" == command {
-					key = parts[1]
-					value, err := db.Get(namespace, key, passphrase)
-					if nil != err {
-						response.SetError(err)
-					}
-					response.Data.Key = key
-					response.Data.Value = value
-					break
-				}
-			}
-
-			response.SetError(errors.New("Incorrect usage"))
-
-		case strings.HasPrefix(command, "set"):
-			var key string
-			var value string
-
-			if "set" == command {
-				key = parts[1]
-
-				i1 := strings.Index(line, "'")
-				i2 := strings.LastIndex(line, "'")
-				value = line[i1+1 : i2]
-
-				err := db.Set(namespace, key, value, passphrase)
-				if nil != err {
-					response.SetError(err)
-				}
-
+			if 2 != len(parts) {
+				response.SetError(errors.New("Incorrect usage"))
 				break
 			}
 
-			response.SetError(errors.New("Incorrect usage"))
+			resp, err := api.Do(&Request{
+				Method: "delete",
+				Params: RequestParams{
+					Namespace:  namespace,
+					Key:        parts[1],
+					Passphrase: passphrase,
+				},
+			})
+			if nil != err {
+				panic(err)
+			}
+			response = resp
+
+		case "get" == command:
+
+			if 2 != len(parts) {
+				response.SetError(errors.New("Incorrect usage"))
+				break
+			}
+
+			resp, err := api.Do(&Request{
+				Method: "get",
+				Params: RequestParams{
+					Namespace:  namespace,
+					Key:        parts[1],
+					Passphrase: passphrase,
+				},
+			})
+			if nil != err {
+				panic(err)
+			}
+			response = resp
+
+		case "set" == command:
+
+
+			i1 := strings.Index(line, "'")
+			i2 := strings.LastIndex(line, "'")
+			if i1 == i2 {
+				response.SetError(errors.New("Incorrect usage"))
+				break
+			}
+
+			resp, err := api.Do(&Request{
+				Method: "set",
+				Params: RequestParams{
+					Namespace:  namespace,
+					Key:        parts[1],
+					Value:      line[i1+1 : i2],
+					Passphrase: passphrase,
+				},
+			})
+			if nil != err {
+				panic(err)
+			}
+			response = resp
+
+		case "do" == command:
+			i1 := strings.Index(line, "'")
+			i2 := strings.LastIndex(line, "'")
+
+			if i1 == i2 {
+				response.SetError(errors.New("Incorrect usage"))
+				break
+			}
+
+			request := line[i1+1 : i2]
+			resp, err := api.DoJSON(request)
+			if nil != err {
+				resp.SetError(err)
+			}
+			response = resp
 
 		case command == "help":
 			usage(l.Stderr())
 
-		case strings.HasPrefix(command, "keys"):
-			results, err := db.Keys(namespace)
+		case "keys" == command:
+			resp, err := api.Do(&Request{
+				Method: "get_keys",
+				Params: RequestParams{
+					Namespace: namespace,
+				},
+			})
 			if nil != err {
-				response.SetError(err)
+				panic(err)
 			}
-			response.Data.Keys = &results
+			response = resp
 
 		case strings.HasPrefix(command, "namespaces"):
-			results, err := db.Tables()
+			resp, err := api.Do(&Request{
+				Method: "get_namespaces",
+			})
 			if nil != err {
-				response.SetError(err)
+				panic(err)
 			}
-			response.Data.Namespaces = &results
+			response = resp
 
 		case command == "bye":
 			goto exit

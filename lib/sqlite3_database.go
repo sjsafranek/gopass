@@ -27,7 +27,7 @@ func (self *Sqlite3Database) CreateTable(table_name string) error {
 	return self.execWriteQuery(fmt.Sprintf(`
 		CREATE TABLE IF NOT EXISTS %v(
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			key TEXT NOT NULL UNIQUE,
+			key TEXT NOT NULL,
 			value TEXT NOT NULL,
 			create_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			update_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -95,24 +95,9 @@ func (self *Sqlite3Database) Del(table, key, passphrase string) error {
 }
 
 func (self *Sqlite3Database) Tables() ([]string, error) {
-
 	results := []string{}
 
-	// query := `
-	// SELECT
-	// 	m.name AS table_name
-	// 	p.name AS column_name,
-	// 	p.type AS column_type
-	// FROM
-	// 	sqlite_master AS m
-	// JOIN
-	// 	pragma_table_info(m.name) AS p
-	// ORDER BY
-	// 	m.name,
-	// 	p.cid;
-	// `
-
-	rows, err := self.db.Query(`SELECT table_name FROM sqlite_master;`)
+	rows, err := self.db.Query(`SELECT tbl_name FROM sqlite_master WHERE type = 'table' AND name != 'sqlite_sequence';`)
 	if err != nil {
 		return results, err
 	}
@@ -120,20 +105,12 @@ func (self *Sqlite3Database) Tables() ([]string, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var table_name string
-		// var column_name string
-		// var column_type string
-		// err = rows.Scan(&table_name, &column_name, &column_type)
 		err = rows.Scan(&table_name)
 		if err != nil {
 			return results, err
 		}
 
 		results = append(results, table_name)
-
-		// if _, ok := results[table_name]; !ok {
-		// 	results[table_name] = []Column{}
-		// }
-		// results[table_name] = append(results[table_name], Column{Name: column_name, Type: column_type})
 	}
 
 	return results, rows.Err()

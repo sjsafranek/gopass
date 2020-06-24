@@ -8,16 +8,21 @@ import (
 )
 
 const VERSION = "0.0.1"
+const DEFAULT_NAMESPACE = "store"
 
 // Request
 type Request struct {
-	Id      string `json:"id,ompitempty"`
-	Version string `json:"version"`
-	Method  string `json:"method,omitempty"`
-	Params  Params `json:"params,omitempty"`
+	Id      string        `json:"id,ompitempty"`
+	Version string        `json:"version"`
+	Method  string        `json:"method,omitempty"`
+	Params  RequestParams `json:"params,omitempty"`
 }
 
-type Params struct {
+type RequestParams struct {
+	Namespace  string `json:"namespace"`
+	Key        string `json:"key"`
+	Value      string `json:"value"`
+	Passphrase string `json:"passphrase"`
 }
 
 func (self *Request) Unmarshal(data string) error {
@@ -30,7 +35,7 @@ type Response struct {
 	Version string       `json:"version,omitempty"`
 	Status  string       `json:"status"`
 	Error   string       `json:"error,omitempty"`
-	Data    ResponseData `json:"data"`
+	Data    *ResponseData `json:"data,omitempty"`
 }
 
 func (self *Response) SetError(err error) {
@@ -71,13 +76,14 @@ func (self *Response) Print() error {
 
 type ResponseData struct {
 	Key        string    `json:"key,omitempty"`
-	Value      string    `json:"value,omitempty"`
 	Keys       *[]string `json:"keys,omitempty"`
-	Namespaces *[]string `json:"namespace,omitempty"`
+	Value      string    `json:"value,omitempty"`
 	Namespace  string    `json:"namespace,omitempty"`
+	Namespaces *[]string `json:"namespaces,omitempty"`
 	Passphrase string    `json:"passphrase,omitempty"`
 }
 
 func NewResponse() *Response {
-	return &Response{Version: VERSION, Id: NewId(), Status: "ok"}
+	// return &Response{Version: VERSION, Id: NewId(), Status: "ok"}
+	return &Response{Version: VERSION, Status: "ok"}
 }
