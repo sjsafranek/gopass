@@ -69,7 +69,7 @@ func main() {
 		fmt.Println(result)
 	*/
 
-	db, err := lib.OpenDb(fmt.Sprintf("gp.%v", DB_ENGINE), DB_ENGINE)
+	db, err := lib.OpenDb(fmt.Sprintf("gopass.%v", DB_ENGINE), DB_ENGINE)
 	if nil != err {
 		panic(err)
 	}
